@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.2.0
+;; Version: 0.3.3
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.0.0") (vertico "0.13.0"))
 
@@ -56,12 +56,11 @@
 
 ;;; Code:
 ;; * vertico-posframe's code
-(require 'cl-lib)
 (require 'posframe)
 (require 'vertico)
 
 (defgroup vertico-posframe nil
-  "Using posframe to show vertico"
+  "Using posframe to show vertico."
   :group 'vertico-posframe)
 
 (defcustom vertico-posframe-font nil
@@ -124,6 +123,8 @@ When 0, no border is showed."
   :group 'vertico-posframe)
 
 (defvar vertico-posframe--buffer " *vertico-posframe--buffer*")
+(defvar vertico-posframe--minibuffer-cover " *vertico-posframe--minibuffer-cover*")
+(defvar vertico-posframe--minibuffer-message " *vertico-posframe--minibuffer-message*")
 (defvar vertico-posframe--last-window nil)
 
 (defvar vertico-posframe--overlay)
@@ -134,7 +135,8 @@ When 0, no border is showed."
 (defvar exwm-workspace-current-index)
 
 (defun vertico-posframe-refposhandler-default (&optional frame)
-  "The default posframe refposhandler used by vertico-posframe."
+  "The default posframe refposhandler used by vertico-posframe.
+Optional argument FRAME ."
   (cond
    ;; EXWM environment
    ((bound-and-true-p exwm--connection)
@@ -171,9 +173,9 @@ When 0, no border is showed."
   "Display LINES in posframe."
   (let ((count (vertico--format-count))
         (prompt (minibuffer-prompt))
-        (content (minibuffer-contents)))
+        (content (minibuffer-contents))
+        (input-method current-input-method))
     (with-current-buffer (get-buffer-create vertico-posframe--buffer)
-      (add-hook 'window-selection-change-functions 'vertico-posframe--select nil 'local)
       (setq-local inhibit-modification-hooks t
                   cursor-in-non-selected-windows 'box)
       (erase-buffer)
@@ -182,19 +184,35 @@ When 0, no border is showed."
               (propertize " " 'face 'vertico-posframe-cursor)
               "\n" (string-join lines)))
     (with-selected-window (vertico-posframe-last-window)
-      (apply #'posframe-show
-             vertico-posframe--buffer
-             :font vertico-posframe-font
-             :poshandler vertico-posframe-poshandler
-             :background-color (face-attribute 'vertico-posframe :background nil t)
-             :foreground-color (face-attribute 'vertico-posframe :foreground nil t)
-             :border-width vertico-posframe-border-width
-             :border-color (face-attribute 'vertico-posframe-border :background nil t)
-             :override-parameters vertico-posframe-parameters
-             :refposhandler vertico-posframe-refposhandler
-             :hidehandler #'vertico-posframe-hidehandler
-             :lines-truncate t
-             (funcall vertico-posframe-size-function)))))
+      ;; Create a posframe to cover minibuffer.
+      (if input-method
+          (posframe-hide vertico-posframe--minibuffer-cover)
+        (let* ((win (active-minibuffer-window))
+               (x (window-pixel-left win))
+               (y (window-pixel-top win)))
+          (posframe-show vertico-posframe--minibuffer-cover
+                         :string (make-string 120 ? )
+                         :position (cons x y)
+                         :lines-truncate t)))
+      (vertico-posframe--show))))
+
+(defun vertico-posframe--show (&optional string)
+  "`posframe-show' of vertico-posframe.
+Show STRING when it is a string."
+  (apply #'posframe-show
+         vertico-posframe--buffer
+         :string string
+         :font vertico-posframe-font
+         :poshandler vertico-posframe-poshandler
+         :background-color (face-attribute 'vertico-posframe :background nil t)
+         :foreground-color (face-attribute 'vertico-posframe :foreground nil t)
+         :border-width vertico-posframe-border-width
+         :border-color (face-attribute 'vertico-posframe-border :background nil t)
+         :override-parameters vertico-posframe-parameters
+         :refposhandler vertico-posframe-refposhandler
+         :hidehandler #'vertico-posframe-hidehandler
+         :lines-truncate t
+         (funcall vertico-posframe-size-function)))
 
 (defun vertico-posframe-last-window ()
   "Get the last actived window before active minibuffer."
@@ -204,34 +222,53 @@ When 0, no border is showed."
           (next-window))
         (selected-window))))
 
-(defun vertico-posframe--select (_)
-  "Ensure that cursor is only shown if minibuffer is selected."
-  (with-current-buffer (buffer-local-value 'vertico-posframe--buffer
-                                           (window-buffer (active-minibuffer-window)))
-    (if (eq (selected-window) (active-minibuffer-window))
-        (setq-local cursor-in-non-selected-windows 'box)
-      (setq-local cursor-in-non-selected-windows nil)
-      (goto-char (point-min)))))
-
 (defun vertico-posframe--hide ()
   "Hide vertico buffer."
   (when (posframe-workable-p)
-    (posframe-hide vertico-posframe--buffer)))
+    (posframe-hide vertico-posframe--buffer)
+    ;; FIXME: delay 0.1 second to remove minibuffer cover, which can
+    ;; limit minibuffer flicker.
+    (run-with-timer
+     0.1 nil
+     (lambda ()
+       (posframe-hide vertico-posframe--minibuffer-cover)))))
+
+(defun vertico-posframe-post-command-function ()
+  "`post-command-hook' function used by vertico-posframe."
+  (while-no-input
+    (redisplay)
+    (when (and vertico-posframe-mode
+               (minibufferp)
+               (posframe-workable-p))
+      (with-current-buffer (window-buffer (active-minibuffer-window))
+        (let* ((count (vertico--format-count))
+               (count-length (length count))
+               (point (point))
+               (prompt (buffer-string)))
+          (remove-text-properties 0 (length prompt) '(read-only nil) prompt)
+          (with-current-buffer (get-buffer-create vertico-posframe--buffer)
+            (goto-char (point-min))
+            (delete-region (point) (line-beginning-position 2))
+            (insert (concat count prompt) "  \n")
+            (add-text-properties
+             (+ point count-length) (+ point count-length 1)
+             '(face vertico-posframe-cursor))))))))
 
 (defun vertico-posframe--setup ()
   "Setup minibuffer overlay, which pushes the minibuffer content down."
-  (add-hook 'window-selection-change-functions 'vertico-posframe--select nil 'local)
   (add-hook 'minibuffer-exit-hook 'vertico-posframe--hide nil 'local)
-  (setq-local cursor-type '(bar . 0))
-  (setq vertico-posframe--overlay (make-overlay (point-max) (point-max) nil t t))
-  (overlay-put vertico-posframe--overlay 'window (selected-window))
-  (overlay-put vertico-posframe--overlay 'priority 1000)
-  (overlay-put vertico-posframe--overlay 'before-string "\n"))
+  (setq-local cursor-type '(bar . 0)))
 
 (defun vertico-posframe--advice (&rest _args)
   "Advice for ORIG completion function, receiving ARGS."
   (unless (minibufferp) ; minibuffer recursive
     (setq vertico-posframe--last-window (selected-window))))
+
+(defun vertico-posframe--minibuffer-message (message &rest _args)
+  "Advice function of `minibuffer-message'"
+  (let* ((count (vertico--format-count))
+         (prompt (buffer-string)))
+    (vertico-posframe--show (concat count prompt message))))
 
 ;;;###autoload
 (define-minor-mode vertico-posframe-mode
@@ -239,15 +276,19 @@ When 0, no border is showed."
   :global t
   (cond
    (vertico-posframe-mode
+    (advice-add 'minibuffer-message :before #'vertico-posframe--minibuffer-message)
     (advice-add #'vertico--display-candidates :override #'vertico-posframe--display)
     (advice-add #'vertico--setup :after #'vertico-posframe--setup)
     (advice-add #'completing-read-default :before #'vertico-posframe--advice)
-    (advice-add #'completing-read-multiple :before #'vertico-posframe--advice))
+    (advice-add #'completing-read-multiple :before #'vertico-posframe--advice)
+    (add-hook 'post-command-hook #'vertico-posframe-post-command-function))
    (t
+    (advice-remove 'minibuffer-message #'vertico-posframe--minibuffer-message)
     (advice-remove #'vertico--display-candidates #'vertico-posframe--display)
     (advice-remove #'vertico--setup #'vertico-posframe--setup)
     (advice-remove #'completing-read-default #'vertico-posframe--advice)
     (advice-remove #'completing-read-multiple #'vertico-posframe--advice)
+    (remove-hook 'post-command-hook #'vertico-posframe-post-command-function)
     (posframe-delete vertico-posframe--buffer))))
 
 (provide 'vertico-posframe)
