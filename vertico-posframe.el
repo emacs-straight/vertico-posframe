@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.3.7
+;; Version: 0.3.8
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.0.0") (vertico "0.13.0"))
 
@@ -206,14 +206,14 @@ Show STRING when it is a string."
          :lines-truncate t
          (funcall vertico-posframe-size-function)))
 
-(defun vertico-posframe--create-minibuffer-cover ()
+(defun vertico-posframe--create-minibuffer-cover (&optional string)
   "Create minibuffer cover."
-  (let* ((win (active-minibuffer-window))
-         (x (window-pixel-left win))
-         (y (window-pixel-top win)))
+  (let ((color (face-background 'default nil)))
     (posframe-show vertico-posframe--minibuffer-cover
-                   :string (make-string 120 ? )
-                   :position (cons x y)
+                   :string (or string (make-string 120 ? ))
+                   :position (cons 0 -1)
+                   :background-color color
+                   :foreground-color color
                    :lines-truncate t
                    :timeout 3)))
 
@@ -254,6 +254,9 @@ Show STRING when it is a string."
       (with-current-buffer (window-buffer (active-minibuffer-window))
         (let* ((point (point))
                (count (vertico-posframe--format-count))
+               ;; NOTE: Vertico count in minibuffer is before-string
+               ;; of an overlay, so the result of `buffer-string' will
+               ;; not include it.
                (contents (buffer-string))
                (n (+ point (length count)))
                (cursor-face
@@ -292,20 +295,24 @@ Argument MESSAGE ."
   :global t
   (cond
    (vertico-posframe-mode
-    (advice-add 'minibuffer-message :before #'vertico-posframe--minibuffer-message)
+    (advice-add #'minibuffer-message :before #'vertico-posframe--minibuffer-message)
     (advice-add #'vertico--display-candidates :override #'vertico-posframe--display)
     (advice-add #'vertico--setup :after #'vertico-posframe--setup)
     (advice-add #'completing-read-default :before #'vertico-posframe--advice)
     (advice-add #'completing-read-multiple :before #'vertico-posframe--advice)
-    (add-hook 'post-command-hook #'vertico-posframe--post-command-function))
+    (add-hook 'post-command-hook #'vertico-posframe--post-command-function)
+    ;; Create a mini minibuffer cover in adcance to limit flicker for
+    ;; background and foreground color changing.
+    (vertico-posframe--create-minibuffer-cover ""))
    (t
-    (advice-remove 'minibuffer-message #'vertico-posframe--minibuffer-message)
+    (advice-remove #'minibuffer-message #'vertico-posframe--minibuffer-message)
     (advice-remove #'vertico--display-candidates #'vertico-posframe--display)
     (advice-remove #'vertico--setup #'vertico-posframe--setup)
     (advice-remove #'completing-read-default #'vertico-posframe--advice)
     (advice-remove #'completing-read-multiple #'vertico-posframe--advice)
     (remove-hook 'post-command-hook #'vertico-posframe--post-command-function)
-    (posframe-delete vertico-posframe--buffer))))
+    (posframe-delete vertico-posframe--buffer)
+    (posframe-delete vertico-posframe--minibuffer-cover))))
 
 (provide 'vertico-posframe)
 ;;; vertico-posframe.el ends here
