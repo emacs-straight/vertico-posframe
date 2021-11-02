@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.3.8
+;; Version: 0.3.9
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.0.0") (vertico "0.13.0"))
 
@@ -107,6 +107,19 @@ When 0, no border is showed."
   "The frame parameters used by vertico-posframe."
   :type 'string)
 
+(defcustom vertico-posframe-show-minibuffer-rules
+  (list "^eval-*")
+  "A list of rule showed minibuffer.
+
+a rule can be a regexp or a function.
+
+1. when rule is a regexp and it match `this-command'.
+2. when rule is a function and it return t.
+3. when rule is a symbol, its value is t.
+
+minibuffer will not be hided by minibuffer-cover."
+  :type '(repeat (choice string function)))
+
 (defface vertico-posframe
   '((t (:inherit default)))
   "Face used by the vertico-posframe."
@@ -180,7 +193,7 @@ Optional argument FRAME ."
     (with-selected-window (vertico-posframe-last-window)
       ;; Create a posframe to cover minibuffer.
       (if show-minibuffer
-          (posframe-hide vertico-posframe--minibuffer-cover)
+          (vertico-posframe--hide-minibuffer-cover)
         (vertico-posframe--create-minibuffer-cover))
       (vertico-posframe--show))))
 
@@ -217,10 +230,28 @@ Show STRING when it is a string."
                    :lines-truncate t
                    :timeout 3)))
 
+(defun vertico-posframe--hide-minibuffer-cover ()
+  "Hide minibuffer cover."
+  ;; FIXME: delay 0.1 second to remove minibuffer cover, which can
+  ;; limit minibuffer flicker.
+  (run-with-timer
+   0.1 nil
+   (lambda ()
+     (posframe-hide vertico-posframe--minibuffer-cover))))
+
 (defun vertico-posframe--show-minibuffer-p ()
   "Test show minibuffer or not."
   (or current-input-method
-      (string-match-p "^eval-*" (symbol-name this-command))))
+      (cl-some
+       (lambda (rule)
+         (cond ((functionp rule)
+                (funcall rule))
+               ((and rule (stringp rule))
+                (string-match-p rule (symbol-name this-command)))
+               ((symbolp rule)
+                (symbol-value rule))
+               (t nil)))
+       vertico-posframe-show-minibuffer-rules)))
 
 (defun vertico-posframe-last-window ()
   "Get the last actived window before active minibuffer."
@@ -234,12 +265,7 @@ Show STRING when it is a string."
   "Hide vertico buffer."
   (when (posframe-workable-p)
     (posframe-hide vertico-posframe--buffer)
-    ;; FIXME: delay 0.1 second to remove minibuffer cover, which can
-    ;; limit minibuffer flicker.
-    (run-with-timer
-     0.1 nil
-     (lambda ()
-       (posframe-hide vertico-posframe--minibuffer-cover)))))
+    (vertico-posframe--hide-minibuffer-cover)))
 
 (defun vertico-posframe--post-command-function ()
   "`post-command-hook' function used by vertico-posframe."
@@ -247,7 +273,7 @@ Show STRING when it is a string."
     (redisplay)
     (when (and vertico-posframe-mode
                (not (minibufferp)))
-      (posframe-hide vertico-posframe--minibuffer-cover))
+      (vertico-posframe--hide-minibuffer-cover))
     (when (and vertico-posframe-mode
                (minibufferp)
                (posframe-workable-p))
