@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.3.10
+;; Version: 0.4.1
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.0.0") (vertico "0.13.0"))
 
@@ -229,14 +229,17 @@ Show STRING when it is a string."
                  :foreground-color (face-attribute 'vertico-posframe :foreground nil t)
                  :border-width vertico-posframe-border-width
                  :border-color (face-attribute 'vertico-posframe-border :background nil t)
-                 :override-parameters vertico-posframe-parameters))
+                 :override-parameters vertico-posframe-parameters
+                 :timeout 0.1))
 
 (defun vertico-posframe--create-minibuffer-cover (&optional string)
   "Create minibuffer cover."
-  (let ((color (face-background 'default nil)))
+  (let ((color (face-background 'default nil))
+        (win (active-minibuffer-window)))
     (posframe-show vertico-posframe--minibuffer-cover
-                   :string (or string (make-string (frame-width) ? ))
-                   :position (cons 0 -1)
+                   :string (or string (make-string (frame-width) ?\ ))
+                   :position (cons 0 (- (frame-pixel-height) (window-pixel-height win)))
+                   :height (+ (window-height win) 1)
                    :background-color color
                    :foreground-color color
                    :lines-truncate t
