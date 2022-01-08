@@ -5,9 +5,9 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.4.7
+;; Version: 0.4.8
 ;; Keywords: abbrev, convenience, matching, vertico
-;; Package-Requires: ((emacs "26.0") (posframe "1.0.0") (vertico "0.13.0"))
+;; Package-Requires: ((emacs "26.0") (posframe "1.1.4") (vertico "0.13.0"))
 
 ;; This file is part of GNU Emacs.
 
@@ -223,17 +223,16 @@ is called, window-point will be set to WINDOW-POINT."
 
 (defun vertico-posframe--show-minibuffer-p ()
   "Test show minibuffer or not."
-  (or current-input-method
-      (cl-some
-       (lambda (rule)
-         (cond ((functionp rule)
-                (funcall rule))
-               ((and rule (stringp rule))
-                (string-match-p rule (symbol-name this-command)))
-               ((symbolp rule)
-                (symbol-value rule))
-               (t nil)))
-       vertico-posframe-show-minibuffer-rules)))
+  (cl-some
+   (lambda (rule)
+     (cond ((functionp rule)
+            (funcall rule))
+           ((and rule (stringp rule))
+            (string-match-p rule (symbol-name this-command)))
+           ((symbolp rule)
+            (symbol-value rule))
+           (t nil)))
+   vertico-posframe-show-minibuffer-rules))
 
 (defun vertico-posframe-last-window ()
   "Get the last actived window before active minibuffer."
