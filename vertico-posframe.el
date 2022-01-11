@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.4.8
+;; Version: 0.5.0
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.1.4") (vertico "0.13.0"))
 
@@ -187,10 +187,6 @@ Optional argument FRAME ."
     (with-selected-window (vertico-posframe-last-window)
       (vertico-posframe--show vertico-posframe--buffer point))))
 
-(defun vertico-posframe--format-count ()
-  "Format vertico count."
-  (propertize (or (vertico--format-count) "") 'face 'minibuffer-prompt))
-
 (defun vertico-posframe--show (buffer window-point)
   "`posframe-show' of vertico-posframe.
 
@@ -212,7 +208,6 @@ is called, window-point will be set to WINDOW-POINT."
                          :refposhandler vertico-posframe-refposhandler
                          :hidehandler #'vertico-posframe-hidehandler
                          :lines-truncate t
-                         :refresh 0.5
                          (funcall vertico-posframe-size-function))))
     ;; NOTE: `posframe-show' will force set window-point to 0, so we
     ;; need reset it again after `posframe-show'.
