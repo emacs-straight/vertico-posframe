@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.5.5
+;; Version: 0.5.6
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.1.4") (vertico "0.13.0"))
 
@@ -212,19 +212,30 @@ is called, window-point will be set to WINDOW-POINT."
   (let ((posframe
          ;; Some posframe poshandlers need infos of last-window.
          (with-selected-window (vertico-posframe-last-window)
-           (apply #'posframe-show
-                  buffer
-                  :font vertico-posframe-font
-                  :poshandler vertico-posframe-poshandler
-                  :background-color (face-attribute 'vertico-posframe :background nil t)
-                  :foreground-color (face-attribute 'vertico-posframe :foreground nil t)
-                  :border-width vertico-posframe-border-width
-                  :border-color (vertico-posframe--get-border-color)
-                  :override-parameters vertico-posframe-parameters
-                  :refposhandler vertico-posframe-refposhandler
-                  :hidehandler #'vertico-posframe-hidehandler
-                  :lines-truncate vertico-posframe-truncate-lines
-                  (funcall vertico-posframe-size-function)))))
+           ;; Variable settings in `vertico-multiform-commands' will
+           ;; save to BUFFER as buffer-local variables, so we need to
+           ;; switch to BUFFER to get settings, for example:
+           ;;
+           ;; (setq vertico-multiform-commands
+           ;;       '((consult-line
+           ;;          posframe
+           ;;          (vertico-posframe-poshandler . posframe-poshandler-frame-top-center))
+           ;;         (t buffer)))
+           ;;
+           (with-current-buffer buffer
+             (apply #'posframe-show
+                    buffer
+                    :font vertico-posframe-font
+                    :poshandler vertico-posframe-poshandler
+                    :background-color (face-attribute 'vertico-posframe :background nil t)
+                    :foreground-color (face-attribute 'vertico-posframe :foreground nil t)
+                    :border-width vertico-posframe-border-width
+                    :border-color (vertico-posframe--get-border-color)
+                    :override-parameters vertico-posframe-parameters
+                    :refposhandler vertico-posframe-refposhandler
+                    :hidehandler #'vertico-posframe-hidehandler
+                    :lines-truncate vertico-posframe-truncate-lines
+                    (funcall vertico-posframe-size-function))))))
     ;; NOTE: `posframe-show' will force set window-point to 0, so we
     ;; need reset it again after `posframe-show'.
     (when (numberp window-point)
