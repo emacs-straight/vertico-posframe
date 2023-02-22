@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.7.0
+;; Version: 0.7.1
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.1.4") (vertico "1.1"))
 
@@ -74,6 +74,7 @@
 ;; * vertico-posframe's code
 (require 'posframe)
 (require 'vertico)
+(require 'vertico-multiform)
 
 (defgroup vertico-posframe nil
   "Using posframe to show vertico."
@@ -198,11 +199,10 @@ minibuffer will not be hided by minibuffer-cover."
       (set-window-vscroll (active-minibuffer-window) 0)
       (posframe-hide vertico-posframe--buffer)))))
 
-(eval-after-load 'vertico-multiform
-  '(progn
-     (cl-pushnew 'vertico-posframe-mode vertico-multiform--display-modes)
-     (vertico-multiform--define-display-toggle posframe)
-     (define-key vertico-multiform-map (kbd "M-P") #'vertico-multiform-posframe)))
+;; Support vertico-multiform
+(cl-pushnew 'vertico-posframe-mode vertico-multiform--display-modes)
+(vertico-multiform--define-display-toggle posframe)
+(define-key vertico-multiform-map (kbd "M-P") #'vertico-multiform-posframe)
 
 (cl-defmethod vertico--setup :after (&context (vertico-posframe-mode (eql t)))
   "Setup minibuffer overlay, which pushes the minibuffer content down."
