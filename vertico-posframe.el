@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.7.2
+;; Version: 0.7.3
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.4.0") (vertico "1.1"))
 
@@ -307,7 +307,7 @@ minibuffer will not be hided by minibuffer-cover."
        (if (facep face)
            face
          face-fallback)))
-   :background))
+   :background nil t))
 
 (defun vertico-posframe-refposhandler-default (&optional frame)
   "The default posframe refposhandler used by vertico-posframe.
