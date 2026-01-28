@@ -5,7 +5,7 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.9.0
+;; Version: 0.9.1
 ;; Keywords: abbrev, convenience, matching, vertico
 ;; Package-Requires: ((emacs "26.0") (posframe "1.4.0") (vertico "2.5"))
 
@@ -368,8 +368,8 @@ Optional argument FRAME ."
     (or (ignore-errors
           (let ((info (elt exwm-workspace--workareas
                            exwm-workspace-current-index)))
-            (cons (elt info 0)
-                  (elt info 1))))
+            (cons (oref info x)
+                  (oref info y))))
         ;; Need user install xwininfo.
         (ignore-errors
           (posframe-refposhandler-xwininfo frame))
