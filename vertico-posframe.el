@@ -5,9 +5,9 @@
 ;; Author: Feng Shu <tumashu@163.com>
 ;; Maintainer: Feng Shu <tumashu@163.com>
 ;; URL: https://github.com/tumashu/vertico-posframe
-;; Version: 0.9.1
+;; Version: 0.9.2
 ;; Keywords: abbrev, convenience, matching, vertico
-;; Package-Requires: ((emacs "26.0") (posframe "1.4.0") (vertico "2.5"))
+;; Package-Requires: ((emacs "26.0") (posframe "1.4.0") (vertico "2.6"))
 
 ;; This file is part of GNU Emacs.
 
@@ -212,9 +212,7 @@ vertico-posframe works with vertico multiform toggle."
          (mode (intern (format "vertico-%s-mode" name)))
          (toggle (intern (format "vertico-multiform-%s" name))))
     (defalias toggle
-      (lambda ()
-        (interactive)
-        (vertico-multiform-vertical mode))
+      (lambda () (interactive) (vertico-multiform--toggle-mode mode))
       (format "Toggle the %s display." name))
     (push mode vertico-multiform--display-modes)
     (put toggle 'completion-predicate #'vertico--command-p)
